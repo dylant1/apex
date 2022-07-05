@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { readlink } from "fs";
 import styled from "styled-components";
+import cancel from "../public/assets/cancel.svg";
 const Main = styled.main`
   display: flex;
   flex-direction: column;
@@ -18,9 +19,8 @@ const Card = styled.div`
   // border: 1px solid black;
   // background-color: grey;
   border-radius: 5px;
-  box-shadow: rgba(50, 50, 93, 0.25) 0px 6px 12px -2px,
-    rgba(0, 0, 0, 0.3) 0px 3px 7px -3px;
-  width: 400px;
+  border: 1px solid white;
+  // width: 400px;
   margin-bottom: 20px;
 `;
 const CardHeader = styled.div`
@@ -62,34 +62,152 @@ interface IPlayer {
   battlepass: object;
   bans: IBans;
 }
+const SearchBar = styled.input`
+  background: none;
+  color: white;
+  border: none;
+  border: 2px solid grey;
+  border-radius: 50px;
+  padding: 0.5rem 0;
+  padding-left: 20px;
+  text-decoration: none;
+  width: 500px;
+  font-size: 30px;
+  margin-left: 20px;
+  margin-right: 20px;
+`;
+const Form = styled.form`
+  display: flex;
+  align-items: center;
+`;
+const Title = styled.div`
+  display: flex;
+  justify-content: left;
+  align-items: center;
+  font-size: 35px;
+  padding-bottom: 5px;
+`;
+const Platform = styled.select`
+  font-size: 30px;
+  color: white;
+  background: none;
+  border: 2px solid grey;
+  padding: 0.5rem;
+`;
+const Option = styled.option`
+  background-color: grey;
+`;
+const Plus = styled.input`
+  font-size: 50px;
+  color: white;
+  background: none;
+  // border: 2px solid grey;
+  border: none;
+  border-radius: 50px;
+  border: 2px solid grey;
+  padding: 0 1rem;
 
+  &:hover {
+    transition: 0.5s;
+    cursor: pointer;
+    background-color: grey;
+  }
+`;
+const Item = styled.td`
+  // border: 1px solid #ddd;
+  padding: 8px;
+`;
+const Row = styled.tr``;
+const Header = styled.th`
+  padding-top: 12px;
+  padding-bottom: 12px;
+  text-align: left;
+  background-color: #7c0a02;
+  color: white;
+  // border: 1px solid #ddd;
+  padding: 8px;
+`;
+const Table = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+`;
+const Img = styled.img`
+  cursor: pointer;
+`;
+const Hero = styled.div`
+  width: 50%;
+  margin-top: 150px;
+`;
+export const isBrowser = (): boolean => {
+  return typeof window !== "undefined";
+};
+
+export const nextLocalStorage = (): Storage | void => {
+  if (isBrowser()) {
+    return window.localStorage;
+  }
+};
 const Home: NextPage = () => {
   const [search, setSearch] = useState<string>("");
   const [platform, setPlatform] = useState<string>("PC");
   const [results, setResults] = useState<any>([]);
   const handleInput = (e: any) => {
-    // console.log(e.target.value);
     setSearch(e.target.value);
   };
   const handlePlatform = (e: any) => {
     setPlatform(e.target.value);
   };
+  const handleDelete = (username: string) => {
+    let state = results;
+    let elementPos = state
+      .map(function (x: any) {
+        return x.name;
+      })
+      .indexOf(username);
+    state.splice(elementPos, 1);
+    setResults([...state]);
+  };
+  const sortResults = (objects: any) => {
+    function compare(a: any, b: any) {
+      const rankA = a.rank.rankScore;
+      const rankB = b.rank.rankScore;
+
+      let comparison = 0;
+      if (rankA > rankB) {
+        comparison = -1;
+      } else if (rankA < rankB) {
+        comparison = 1;
+      }
+      return comparison;
+    }
+    let tmp = objects.sort(compare);
+    return tmp;
+  };
   const handleSubmit = (e: any) => {
     e.preventDefault();
     fetch(
-      `https://api.mozambiquehe.re/bridge?auth=${process.env.NEXT_PUBLIC_API_KEY}&player=${search}&platform=${platform}`
+      `https://api.mozambiquehe.re/bridge?auth=${
+        process.env.NEXT_PUBLIC_API_KEY || "64b194b9539b4f19a3295b64fa10c85a"
+      }&player=${search}&platform=${platform}`
     )
       .then((response) => response.json())
       .then((data) => {
         if (data.global) {
-          console.log(data.global.level);
-          console.log(data.global.name);
           setResults((old: any) => [...old, data.global]);
         }
       })
       .catch((err) => console.log(err));
   };
   useEffect(() => {
+    let storage = nextLocalStorage()?.getItem("results");
+    if (storage) {
+      setResults(sortResults(JSON.parse(storage)));
+    }
+  }, []);
+
+  useEffect(() => {
+    // setResults(sortResults(results));
+    nextLocalStorage()?.setItem("results", JSON.stringify(results));
     console.log(results);
   }, [results]);
   return (
@@ -102,50 +220,87 @@ const Home: NextPage = () => {
 
       <Main>
         <FormWrapper>
-          <form onSubmit={handleSubmit}>
-            <select
+          <Form
+            onSubmit={(e: any) => {
+              handleSubmit(e);
+            }}
+          >
+            <Platform
               name="platform"
               id="platform=-select"
               onChange={handlePlatform}
             >
-              <option value="PC">Platform</option>
-              <option value="PC">PC</option>
-              <option value="PS4">PS4</option>
-              <option value="X1">XBOX</option>
-            </select>
-            <input
+              <Option value="PC">Platform</Option>
+              <Option value="PC">PC</Option>
+              <Option value="PS4">PS4</Option>
+              <Option value="X1">XBOX</Option>
+            </Platform>
+            <SearchBar
               type="text"
               placeholder="Search for Player"
               onChange={handleInput}
-            ></input>
-            <input type="submit" value={"+"}></input>
-          </form>
+            ></SearchBar>
+            <Plus type="submit" value={"+"}></Plus>
+          </Form>
         </FormWrapper>
-        {/* <div>{test && test.username}</div> */}
-        <div>
-          {results.map((obj: IPlayer, index: number) => {
-            return (
-              <Card key={obj.name}>
-                <CardHeader>
-                  <img src={obj.rank.rankImg} width={50}></img>
-                  <span>{obj.name}</span>
-                </CardHeader>
-                <CardBody>
-                  <CardBodyItem>
-                    Level: {obj.level > 500 ? 500 : obj.level}
-                  </CardBodyItem>
-                  <CardBodyItem>Points: {obj.rank.rankScore}</CardBodyItem>
-                  {/* <CardBodyItem>
-                    Last Ban:
-                    {obj.bans.last_banReason == "COMPETITIVE_DODGE_COOLDOWN" &&
-                      "Dodged Game"}
-                  </CardBodyItem> */}
-                </CardBody>
-                {/* <div>Remove</div> */}
-              </Card>
-            );
-          })}
-        </div>
+        <Hero>
+          <Title>
+            <span>Leaderboard</span>
+            <span
+              style={{
+                paddingLeft: "10px;",
+                paddingTop: "5px",
+                cursor: "pointer",
+              }}
+              onClick={() => {
+                let storage = nextLocalStorage()?.getItem("results");
+                if (storage) {
+                  setResults(sortResults(JSON.parse(storage)));
+                }
+              }}
+            >
+              <img src="/refresh.svg" />
+            </span>
+          </Title>
+          <Table>
+            <thead>
+              <Row>
+                <Header>Rank</Header>
+                <Header>Username</Header>
+                <Header>Points</Header>
+                <Header>Level</Header>
+                <Header>Remove</Header>
+              </Row>
+            </thead>
+            <tbody>
+              {results
+                ? results.map((obj: IPlayer, index: number) => {
+                    return (
+                      <Row key={obj.name}>
+                        <Item>
+                          <img src={obj.rank.rankImg} width={50}></img>
+                        </Item>
+                        <Item>
+                          <span>{obj.name}</span>
+                        </Item>
+                        <Item>{obj.rank.rankScore}</Item>
+                        <Item>{obj.level > 500 ? 500 : obj.level}</Item>
+                        <Item>
+                          <span
+                            onClick={() => {
+                              handleDelete(obj.name);
+                            }}
+                          >
+                            <Img src="/cancel2.svg" placeholder="x" />
+                          </span>
+                        </Item>
+                      </Row>
+                    );
+                  })
+                : null}
+            </tbody>
+          </Table>
+        </Hero>
       </Main>
       {/* 
       <footer>
